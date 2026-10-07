@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Layers, Key, CheckCircle2, ArrowRight, ArrowLeft, Terminal, Shield, Plus, Trash2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Layers, CheckCircle2, ArrowRight, ArrowLeft, Terminal, Shield, Plus, Trash2, Sparkles } from 'lucide-react';
 
 export interface ServerCatalogItem {
   id: string;
@@ -19,16 +19,113 @@ export interface DeploymentConfig {
   enableHealthCheck: boolean;
 }
 
+export interface PredefinedTemplate extends ServerCatalogItem {
+  defaultPort: number;
+  defaultRuntime: string;
+  defaultEnv: Array<{ key: string; value: string; isSecret: boolean }>;
+}
+
+export const PREDEFINED_TEMPLATES: PredefinedTemplate[] = [
+  {
+    id: 'tpl-github',
+    name: 'GitHub MCP',
+    description: 'Interact with GitHub repositories, pull requests, issues, and commit histories.',
+    status: 'Available',
+    version: '1.2.0',
+    defaultPort: 8080,
+    defaultRuntime: 'Node.js 20 (Slim)',
+    defaultEnv: [
+      { key: 'GITHUB_PERSONAL_ACCESS_TOKEN', value: 'ghp_live_token_sample99', isSecret: true },
+      { key: 'MCP_LOG_LEVEL', value: 'info', isSecret: false },
+      { key: 'PORT', value: '8080', isSecret: false },
+    ],
+  },
+  {
+    id: 'tpl-postgres',
+    name: 'PostgreSQL MCP',
+    description: 'Query database schemas, inspect table definitions, and run read-only queries.',
+    status: 'Available',
+    version: '1.0.3',
+    defaultPort: 8081,
+    defaultRuntime: 'Python 3.11 (Minimal)',
+    defaultEnv: [
+      { key: 'DATABASE_URL', value: 'postgresql://postgres:pass@localhost:5432/mcp_db', isSecret: true },
+      { key: 'MAX_POOL_SIZE', value: '10', isSecret: false },
+      { key: 'PORT', value: '8081', isSecret: false },
+    ],
+  },
+  {
+    id: 'tpl-gdrive',
+    name: 'Google Drive MCP',
+    description: 'Index, read, and write Google Docs, Sheets, and Drive directory files.',
+    status: 'Available',
+    version: '2.1.0',
+    defaultPort: 8082,
+    defaultRuntime: 'Node.js 20 (Slim)',
+    defaultEnv: [
+      { key: 'GOOGLE_DRIVE_FOLDER_ID', value: 'root', isSecret: false },
+      { key: 'OAUTH_CLIENT_ID', value: 'mcp-app-client-id.apps.googleusercontent.com', isSecret: true },
+      { key: 'PORT', value: '8082', isSecret: false },
+    ],
+  },
+  {
+    id: 'tpl-slack',
+    name: 'Slack MCP',
+    description: 'Stream Slack channel messages and broadcast notifications into AI workspaces.',
+    status: 'Available',
+    version: '0.9.4',
+    defaultPort: 8083,
+    defaultRuntime: 'Node.js 20 (Slim)',
+    defaultEnv: [
+      { key: 'SLACK_BOT_TOKEN', value: 'xoxb-mcp-bot-token-demo', isSecret: true },
+      { key: 'DEFAULT_CHANNEL', value: '#mcp-alerts', isSecret: false },
+      { key: 'PORT', value: '8083', isSecret: false },
+    ],
+  },
+  {
+    id: 'tpl-brave',
+    name: 'Brave Search MCP',
+    description: 'High-speed web search grounding and page content extraction for autonomous AI.',
+    status: 'Available',
+    version: '1.4.1',
+    defaultPort: 8084,
+    defaultRuntime: 'Node.js 20 (Slim)',
+    defaultEnv: [
+      { key: 'BRAVE_SEARCH_API_KEY', value: 'BSA_sample_live_token', isSecret: true },
+      { key: 'SAFE_SEARCH_LEVEL', value: 'moderate', isSecret: false },
+      { key: 'PORT', value: '8084', isSecret: false },
+    ],
+  },
+  {
+    id: 'tpl-memory',
+    name: 'Memory / Knowledge Graph MCP',
+    description: 'Graph-based persistent long-term memory store for AI agents across sessions.',
+    status: 'Available',
+    version: '1.1.2',
+    defaultPort: 8085,
+    defaultRuntime: 'Python 3.11 (Minimal)',
+    defaultEnv: [
+      { key: 'GRAPH_STORE_PATH', value: '/data/graph_memory.db', isSecret: false },
+      { key: 'ENABLE_VECTOR_INDEX', value: 'true', isSecret: false },
+      { key: 'PORT', value: '8085', isSecret: false },
+    ],
+  },
+];
+
 interface DeployWizardProps {
-  server: ServerCatalogItem;
+  server?: ServerCatalogItem | null;
   isOpen: boolean;
   onClose: () => void;
   onConfirmDeploy: (config: DeploymentConfig) => Promise<void>;
 }
 
 export default function DeployWizard({ server, isOpen, onClose, onConfirmDeploy }: DeployWizardProps) {
+  // Use passed server or default to first predefined template
+  const initialServer = server || PREDEFINED_TEMPLATES[0];
+  const [activeServer, setActiveServer] = useState<ServerCatalogItem>(initialServer);
+
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
-  const [imageTag, setImageTag] = useState<string>('v' + (server.version || '1.0.0') + '-stable');
+  const [imageTag, setImageTag] = useState<string>('v' + (initialServer.version || '1.0.0') + '-stable');
   const [runtime, setRuntime] = useState<string>('Node.js 20 (Slim)');
   const [port, setPort] = useState<number>(8080);
   const [enableHealthCheck, setEnableHealthCheck] = useState<boolean>(true);
@@ -39,6 +136,28 @@ export default function DeployWizard({ server, isOpen, onClose, onConfirmDeploy 
     { key: 'PORT', value: '8080', isSecret: false },
     { key: 'API_SECRET_KEY', value: 'sk_live_mcp_987123x', isSecret: true },
   ]);
+
+  // Sync state when server prop changes or modal opens
+  useEffect(() => {
+    const target = server || PREDEFINED_TEMPLATES[0];
+    applyTemplate(target);
+    setCurrentStep(1);
+  }, [server, isOpen]);
+
+  const applyTemplate = (tpl: ServerCatalogItem) => {
+    setActiveServer(tpl);
+    setImageTag('v' + (tpl.version || '1.0.0') + '-stable');
+
+    const matchingPredefined = PREDEFINED_TEMPLATES.find((p) => p.name.toLowerCase() === tpl.name.toLowerCase() || p.id === tpl.id);
+    if (matchingPredefined) {
+      setRuntime(matchingPredefined.defaultRuntime);
+      setPort(matchingPredefined.defaultPort);
+      setEnvVars(matchingPredefined.defaultEnv);
+    } else {
+      setPort(8080);
+      setRuntime('Node.js 20 (Slim)');
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -60,7 +179,7 @@ export default function DeployWizard({ server, isOpen, onClose, onConfirmDeploy 
     setIsSubmitting(true);
     try {
       await onConfirmDeploy({
-        server,
+        server: activeServer,
         imageTag,
         runtime,
         port,
@@ -77,61 +196,61 @@ export default function DeployWizard({ server, isOpen, onClose, onConfirmDeploy 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col max-h-[90vh] text-slate-900 dark:text-slate-100 transition-colors">
         
         {/* Wizard Header */}
-        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-850">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-slate-900 rounded-lg text-white">
-              <Layers className="w-5 h-5" />
+            <div className="p-2 bg-slate-900 dark:bg-slate-800 rounded-lg text-white dark:text-slate-100">
+              <Layers className="w-5 h-5 text-emerald-400" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900">
-                Deploy Wizard: {server.name}
+              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                Deploy Wizard: {activeServer.name}
               </h2>
-              <p className="text-xs text-slate-500">
-                Step {currentStep} of 3 — Configure container environment & launch
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Step {currentStep} of 3 — Configure template, image environment & launch container
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-lg transition-colors"
+            className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800 rounded-lg transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Step Indicator Bar */}
-        <div className="grid grid-cols-3 border-b border-slate-200 bg-white text-xs font-medium">
+        <div className="grid grid-cols-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-medium">
           <div
-            className={`py-3 px-4 flex items-center gap-2 border-r border-slate-200 transition-colors ${
+            className={`py-3 px-4 flex items-center gap-2 border-r border-slate-200 dark:border-slate-800 transition-colors ${
               currentStep === 1
-                ? 'bg-slate-900 text-white font-semibold'
+                ? 'bg-slate-900 text-white font-semibold dark:bg-slate-100 dark:text-slate-900'
                 : currentStep > 1
-                ? 'bg-emerald-50 text-emerald-800'
-                : 'text-slate-400 bg-slate-50'
+                ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                : 'text-slate-400 bg-slate-50 dark:bg-slate-850 dark:text-slate-500'
             }`}
           >
             <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-              currentStep === 1 ? 'bg-white text-slate-900' : currentStep > 1 ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-500'
+              currentStep === 1 ? 'bg-white text-slate-900 dark:bg-slate-900 dark:text-white' : currentStep > 1 ? 'bg-emerald-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
             }`}>
               1
             </span>
-            Image & Tag
+            Template & Image
           </div>
 
           <div
-            className={`py-3 px-4 flex items-center gap-2 border-r border-slate-200 transition-colors ${
+            className={`py-3 px-4 flex items-center gap-2 border-r border-slate-200 dark:border-slate-800 transition-colors ${
               currentStep === 2
-                ? 'bg-slate-900 text-white font-semibold'
+                ? 'bg-slate-900 text-white font-semibold dark:bg-slate-100 dark:text-slate-900'
                 : currentStep > 2
-                ? 'bg-emerald-50 text-emerald-800'
-                : 'text-slate-400 bg-slate-50'
+                ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                : 'text-slate-400 bg-slate-50 dark:bg-slate-850 dark:text-slate-500'
             }`}
           >
             <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-              currentStep === 2 ? 'bg-white text-slate-900' : currentStep > 2 ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-500'
+              currentStep === 2 ? 'bg-white text-slate-900 dark:bg-slate-900 dark:text-white' : currentStep > 2 ? 'bg-emerald-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
             }`}>
               2
             </span>
@@ -141,12 +260,12 @@ export default function DeployWizard({ server, isOpen, onClose, onConfirmDeploy 
           <div
             className={`py-3 px-4 flex items-center gap-2 transition-colors ${
               currentStep === 3
-                ? 'bg-slate-900 text-white font-semibold'
-                : 'text-slate-400 bg-slate-50'
+                ? 'bg-slate-900 text-white font-semibold dark:bg-slate-100 dark:text-slate-900'
+                : 'text-slate-400 bg-slate-50 dark:bg-slate-850 dark:text-slate-500'
             }`}
           >
             <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-              currentStep === 3 ? 'bg-white text-slate-900' : 'bg-slate-200 text-slate-500'
+              currentStep === 3 ? 'bg-white text-slate-900 dark:bg-slate-900 dark:text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
             }`}>
               3
             </span>
@@ -156,15 +275,48 @@ export default function DeployWizard({ server, isOpen, onClose, onConfirmDeploy 
 
         {/* Wizard Body Content */}
         <div className="p-6 overflow-y-auto flex-1 text-sm space-y-6">
-          {/* STEP 1: Image & Runtime Selection */}
+          {/* STEP 1: Predefined Template & Image Selection */}
           {currentStep === 1 && (
             <div className="space-y-5">
+              {/* Predefined Template Quick Picker */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                  Predefined MCP Template Preset
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {PREDEFINED_TEMPLATES.map((tpl) => {
+                    const isSelected = activeServer.name === tpl.name;
+                    return (
+                      <button
+                        key={tpl.id}
+                        type="button"
+                        onClick={() => applyTemplate(tpl)}
+                        className={`p-2.5 rounded-xl border text-left transition-all text-xs ${
+                          isSelected
+                            ? 'border-slate-900 bg-slate-900 text-white shadow-sm'
+                            : 'border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800'
+                        }`}
+                      >
+                        <div className="font-semibold truncate">{tpl.name}</div>
+                        <div className={`text-[10px] truncate mt-0.5 ${isSelected ? 'text-slate-300' : 'text-slate-500'}`}>
+                          Port {tpl.defaultPort} · v{tpl.version}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1.5">
+                  Selecting a predefined template pre-loads certified container tags, runtime dependencies, and environment keys.
+                </p>
+              </div>
+
               <div>
                 <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
                   Select Image Tag
                 </label>
                 <div className="grid grid-cols-2 gap-3">
-                  {['v' + (server.version || '1.0.0') + '-stable', 'latest', 'v2.0.0-rc1', 'alpine-slim'].map((tag) => (
+                  {['v' + (activeServer.version || '1.0.0') + '-stable', 'latest', 'v2.0.0-rc1', 'alpine-slim'].map((tag) => (
                     <button
                       key={tag}
                       type="button"
@@ -240,7 +392,7 @@ export default function DeployWizard({ server, isOpen, onClose, onConfirmDeploy 
                     Environment Variables & Secrets
                   </h3>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    Configure environment flags and API tokens injected at runtime.
+                    Pre-populated from template for {activeServer.name}.
                   </p>
                 </div>
                 <button
@@ -304,8 +456,8 @@ export default function DeployWizard({ server, isOpen, onClose, onConfirmDeploy 
                   Container Build Manifest Summary
                 </div>
                 <div className="grid grid-cols-2 gap-y-1.5 pt-1 text-slate-300">
-                  <span>Server Component:</span>
-                  <span className="text-white font-semibold">{server.name}</span>
+                  <span>Server Template:</span>
+                  <span className="text-white font-semibold">{activeServer.name}</span>
 
                   <span>Docker Image Tag:</span>
                   <span className="text-amber-300">{imageTag}</span>
@@ -336,12 +488,12 @@ export default function DeployWizard({ server, isOpen, onClose, onConfirmDeploy 
         </div>
 
         {/* Wizard Footer Navigation */}
-        <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+        <div className="px-6 py-4 bg-slate-50 dark:bg-slate-850 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
           {currentStep > 1 ? (
             <button
               type="button"
               onClick={() => setCurrentStep((prev) => (prev - 1) as any)}
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-100 transition-colors"
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700/80 transition-colors"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               Back
@@ -350,7 +502,7 @@ export default function DeployWizard({ server, isOpen, onClose, onConfirmDeploy 
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-medium text-slate-500 hover:text-slate-800 transition-colors"
+              className="px-4 py-2 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
             >
               Cancel
             </button>
@@ -360,7 +512,7 @@ export default function DeployWizard({ server, isOpen, onClose, onConfirmDeploy 
             <button
               type="button"
               onClick={() => setCurrentStep((prev) => (prev + 1) as any)}
-              className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-semibold text-white bg-slate-900 rounded-xl hover:bg-slate-800 transition-colors shadow-sm"
+              className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 active:bg-slate-950 dark:bg-slate-100 dark:text-slate-950 dark:hover:bg-white rounded-xl transition-colors shadow-sm"
             >
               Next Step
               <ArrowRight className="w-3.5 h-3.5" />

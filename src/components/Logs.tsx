@@ -14,8 +14,8 @@ export default function Logs() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6 text-slate-900">Container Logs</h1>
-      <div className="bg-slate-900 text-slate-100 p-4 rounded-lg h-96 overflow-y-auto font-mono text-xs">
+      <h1 className="text-2xl font-bold mb-6 text-slate-900 dark:text-slate-100">Container Logs</h1>
+      <div className="bg-slate-900 dark:bg-slate-950 border border-slate-800 text-slate-100 p-4 rounded-xl h-96 overflow-y-auto font-mono text-xs shadow-inner">
         {logs.map((log, i) => (
           <div key={i} className="mb-1">{log}</div>
         ))}

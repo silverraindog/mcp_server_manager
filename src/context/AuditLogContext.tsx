@@ -1,9 +1,9 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
 export interface AuditLogEntry {
   id: string;
   timestamp: string;
-  category: 'Configuration' | 'Container Management' | 'System Settings' | 'Deployment';
+  category: 'Configuration' | 'Container Management' | 'System Settings' | 'Deployment' | 'Auto-Scaling' | 'Diagnostic Audit';
   action: string;
   description: string;
   actor: string;
@@ -84,20 +84,23 @@ export const AuditLogProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     localStorage.setItem('mcp_audit_logs', JSON.stringify(logs));
   }, [logs]);
 
-  const addLog = (log: Omit<AuditLogEntry, 'id' | 'timestamp'>) => {
+  const addLog = useCallback((log: Omit<AuditLogEntry, 'id' | 'timestamp'>) => {
     const newEntry: AuditLogEntry = {
       ...log,
       id: 'log-' + Math.random().toString(36).substring(2, 9),
       timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
     };
-    setLogs((prev) => [newEntry, ...prev]);
-  };
+    // Defer state update to next microtask/tick to guarantee it never fires during another component's render phase
+    setTimeout(() => {
+      setLogs((prev) => [newEntry, ...prev]);
+    }, 0);
+  }, []);
 
-  const clearLogs = () => {
+  const clearLogs = useCallback(() => {
     setLogs([]);
-  };
+  }, []);
 
-  const exportLogs = () => {
+  const exportLogs = useCallback(() => {
     const dataStr = JSON.stringify(logs, null, 2);
     const blob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -108,7 +111,7 @@ export const AuditLogProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  };
+  }, [logs]);
 
   return (
     <AuditLogContext.Provider value={{ logs, addLog, clearLogs, exportLogs }}>

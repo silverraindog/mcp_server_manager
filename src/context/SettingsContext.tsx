@@ -1,10 +1,13 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
 export interface AppSettings {
   cpuThreshold: number; // percentage, e.g. 75
   memoryThreshold: number; // percentage, e.g. 75
   alertOnExceed: boolean;
   autoRefreshIntervalSeconds: number;
+  autoScaleEnabled: boolean;
+  autoScaleMaxMemoryBoost: number; // percentage boost, e.g. 50
+  autoScaleCooldownSeconds: number;
 }
 
 interface SettingsContextType {
@@ -18,6 +21,9 @@ const DEFAULT_SETTINGS: AppSettings = {
   memoryThreshold: 75,
   alertOnExceed: true,
   autoRefreshIntervalSeconds: 5,
+  autoScaleEnabled: true,
+  autoScaleMaxMemoryBoost: 50,
+  autoScaleCooldownSeconds: 15,
 };
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -39,13 +45,13 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     localStorage.setItem('mcp_app_settings', JSON.stringify(settings));
   }, [settings]);
 
-  const updateSettings = (newSettings: Partial<AppSettings>) => {
+  const updateSettings = useCallback((newSettings: Partial<AppSettings>) => {
     setSettings((prev) => ({ ...prev, ...newSettings }));
-  };
+  }, []);
 
-  const resetSettings = () => {
+  const resetSettings = useCallback(() => {
     setSettings(DEFAULT_SETTINGS);
-  };
+  }, []);
 
   return (
     <SettingsContext.Provider value={{ settings, updateSettings, resetSettings }}>

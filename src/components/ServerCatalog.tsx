@@ -108,18 +108,18 @@ export default function ServerCatalog() {
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Server Catalog</h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Server Catalog</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
             Browse and deploy pre-configured Model Context Protocol (MCP) servers with guided container orchestration.
           </p>
         </div>
 
         <div className="relative w-full sm:w-72">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
           <input
             type="text"
             placeholder="Search servers..."
-            className="w-full pl-10 pr-4 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-200 bg-white"
+            className="w-full pl-10 pr-4 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-300 dark:focus:ring-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -130,36 +130,36 @@ export default function ServerCatalog() {
         {filteredServers.map((server) => {
           const isInstalling = !!installingIds[server.id];
           return (
-            <div key={server.id} className="p-6 bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col justify-between">
+            <div key={server.id} className="p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm flex flex-col justify-between transition-colors">
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-slate-100 rounded-lg">
-                      <Box className="w-5 h-5 text-slate-700" />
+                    <div className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                      <Box className="w-5 h-5 text-slate-700 dark:text-slate-300" />
                     </div>
                     <div>
-                      <h3 className="text-base font-semibold text-slate-900">{server.name}</h3>
+                      <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">{server.name}</h3>
                       {server.version && (
-                        <span className="text-xs text-slate-400 font-mono">v{server.version}</span>
+                        <span className="text-xs text-slate-400 dark:text-slate-500 font-mono">v{server.version}</span>
                       )}
                     </div>
                   </div>
                   {server.status === 'Installed' && (
-                    <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/70 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800">
+                      <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                       Active
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-slate-600 mb-6 leading-relaxed">{server.description}</p>
+                <p className="text-xs text-slate-600 dark:text-slate-400 mb-6 leading-relaxed">{server.description}</p>
               </div>
 
-              <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+              <div className="flex items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                 {server.status === 'Installed' ? (
                   <>
                     <button
                       onClick={() => handleConfigure(server)}
-                      className="flex-1 flex items-center justify-center gap-2 px-3.5 py-2 text-xs font-medium text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
+                      className="flex-1 flex items-center justify-center gap-2 px-3.5 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
                     >
                       <Settings className="w-3.5 h-3.5" />
                       Configure
@@ -167,7 +167,7 @@ export default function ServerCatalog() {
                     <button
                       onClick={() => handleOpenWizard(server)}
                       disabled={isInstalling}
-                      className="flex items-center justify-center p-2 text-xs font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
+                      className="flex items-center justify-center p-2 text-xs font-medium text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
                       title="Redeploy container wizard"
                     >
                       <RotateCcw className={`w-3.5 h-3.5 ${isInstalling ? 'animate-spin' : ''}`} />
@@ -177,7 +177,7 @@ export default function ServerCatalog() {
                   <button
                     onClick={() => handleOpenWizard(server)}
                     disabled={isInstalling}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-xs font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-50 transition-colors shadow-sm"
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-xs font-medium text-white bg-slate-900 hover:bg-slate-800 active:bg-slate-950 dark:bg-slate-100 dark:text-slate-950 dark:hover:bg-white rounded-lg disabled:opacity-50 transition-colors shadow-sm"
                   >
                     <Rocket className="w-3.5 h-3.5" />
                     {isInstalling ? 'Deploying...' : 'Deploy Wizard'}
